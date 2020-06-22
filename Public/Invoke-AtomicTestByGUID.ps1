@@ -91,10 +91,10 @@ function Invoke-AtomicTestByGUID
                 $id = (Get-Item $res[0].Path).Basename
                 Invoke-AtomicTest $id @PSBoundParameters
             }else{
-                Write-Error "No Tests present for the Guid"
+                Write-Host -Fore Red "ERROR: $TestGuids does not exist`nCheck your Atomic GUID and your PathToAtomicsFolder parameter"
             }
         }else{
-            Write-Error "No Tests present for the Guid"
+            Write-Host -Fore Red "ERROR: $TestGuids does not exist`nCheck your Atomic GUID and your PathToAtomicsFolder parameter"
         }
     }
     End{}
