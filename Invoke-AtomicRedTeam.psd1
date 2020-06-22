@@ -73,6 +73,7 @@
     FunctionsToExport = @(
         'Invoke-AtomicTest',
         'Get-AtomicTechnique',
+        'Invoke-AtomicTestByGUID',
         'New-AtomicTechnique',
         'New-AtomicTest',
         'New-AtomicTestInputArgument',
