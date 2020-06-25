@@ -87,16 +87,15 @@ function Invoke-AtomicTestByGUID
     Process{
         if ($TestGuids -match "^\w{8}(-\w{4}){3}-\w{12}$"){
             $res = (Get-ChildItem -Path $PathToAtomicsFolder -Include *.yaml -Recurse | Select-String -Pattern $TestGuids) -match "(T\d{4}(.\d{3})*)\/\1" #Filter only the technique id as files like index.yaml also contains GUID.
-            if ($res.count -eq 1){ # Can be removed as two tests wont have the same GUIDs.
+            if ($res.count -eq 1){ # Can be removed as two tests won't have the same GUIDs.
                 $id = (Get-Item $res[0].Path).Basename
                 Invoke-AtomicTest $id @PSBoundParameters
             }else{
                 Write-Host -Fore Red "ERROR: $TestGuids does not exist`nCheck your Atomic GUID and your PathToAtomicsFolder parameter"
             }
         }else{
-            Write-Host -Fore Red "ERROR: $TestGuids is not a valid format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).`nCheck your Atomic GUID."
+            Write-Host -Fore Red "ERROR: $TestGuids is not a valid format.`nCheck your Atomic GUID."
         }
     }
     End{}
 }
-
