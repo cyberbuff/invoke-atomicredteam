@@ -86,9 +86,12 @@ function Install-AtomicsFolder {
                 $ms = New-Object IO.MemoryStream
                 [Net.ServicePointManager]::SecurityProtocol = ([Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12)
 
-                $webClient = New-Object HttpClient;
-		        $webClient.Timeout = TimeSpan.FromMinutes(3);
-                $webClient.OpenRead($url).copyto($ms)
+                Add-Type -AssemblyName System.Net
+                $request = [System.Net.HttpWebRequest]::Create($url)
+                $request.Timeout = 180 * 1000            
+                $response = $request.GetResponse()
+                $stream = $response.GetResponseStream()
+                $stream.CopyTo($ms)
                 $Zip = New-Object System.IO.Compression.ZipArchive($ms)
 
                 $Filter = '*.yaml'
@@ -137,7 +140,7 @@ function Install-AtomicsFolder {
         }
     }
     Catch {
-        Write-Host -ForegroundColor Red "Installation of the AtomicsFolder Failed."
+        Write-Error "Installation of the AtomicsFolder Failed."
         Write-Host $_.Exception.Message`n
     }
 }
