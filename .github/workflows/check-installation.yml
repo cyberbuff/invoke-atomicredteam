@@ -1,0 +1,20 @@
+name: Check installation
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build-publish-containers:
+    name: Run atomics
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 3
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Install Invoke-AtomicRedTeam
+        shell: pwsh
+        run: |
+          echo  ${{ github.event.pull_request }}
+          IEX (IWR 'https://raw.githubusercontent.com/cyberbuff/invoke-atomicredteam/master/install-atomicsfolder.ps1' -UseBasicParsing);
+          Install-AtomicsFolder
