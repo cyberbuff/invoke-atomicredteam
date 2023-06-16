@@ -469,6 +469,7 @@ function Invoke-AtomicTest {
                         Write-KeyValue "Executing test: " $testId
                         $startTime = Get-Date
                         $final_command = Merge-InputArgs $test.executor.command $test $InputArgs $PathToPayloads
+                        Write-Host -ForegroundColor "DarkRed" "Final Command: $finalCommand"
                         $res = Invoke-ExecuteCommand $final_command $test.executor.name $executionPlatform $TimeoutSeconds $session -Interactive:$Interactive
                         $stopTime = Get-Date
                         if ($isLoggingModuleSet) {

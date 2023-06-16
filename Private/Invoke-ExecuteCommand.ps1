@@ -63,6 +63,7 @@ function Invoke-ExecuteCommand ($finalCommand, $executor, $executionPlatform, $T
             else {
                 # Local execution that DO NOT contain interactive prompts
                 #   In this situation, capture the stdout/stderr for Invoke-AtomicTest to send to the caller
+                Write-Host -ForegroundColor "DarkRed" "Filename: $execExe Arguments: $arguments"
                 $res = Invoke-Process -filename $execExe -Arguments $arguments -TimeoutSeconds $TimeoutSeconds -stdoutFile "art-out.txt" -stderrFile "art-err.txt" 
             }
         }
