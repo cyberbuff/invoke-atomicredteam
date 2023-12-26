@@ -16,7 +16,7 @@
     CompanyName       = 'Red Canary, Inc.'
 
     # Copyright statement for this module
-    Copyright         = '(c) 2021 Red Canary. All rights reserved.'
+    Copyright         = '(c) 2024 Red Canary. All rights reserved.'
 
     # Description of the functionality provided by this module
     Description       = 'A PowerShell module that runs Atomic Red Team tests from yaml definition files.'
@@ -54,10 +54,10 @@
     VariablesToExport = '*'
 
     NestedModules = @(
-        "Public\Default-ExecutionLogger.psm1",
-        "Public\Attire-ExecutionLogger.psm1",
-        "Public\Syslog-ExecutionLogger.psm1",
-        "Public\WinEvent-ExecutionLogger.psm1"
+        "Public\Logger\Default-ExecutionLogger.psm1",
+        "Public\Logger\Attire-ExecutionLogger.psm1",
+        "Public\Logger\Syslog-ExecutionLogger.psm1",
+        "Public\Logger\WinEvent-ExecutionLogger.psm1"
         )
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.

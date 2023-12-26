@@ -161,6 +161,24 @@
             }
         }
 
+        # Since there might a comma(T1559-1,2,3) Powershell takes it as array.
+        # So converting it back to string.
+        if ($AtomicTechnique -is [array]) {
+            $AtomicTechnique = $AtomicTechnique -join ","
+        }
+
+        # Splitting Atomic Technique short form into technique and test numbers.
+        $AtomicTechniqueParams = ($AtomicTechnique -split '-')
+        $AtomicTechnique = $AtomicTechniqueParams[0]
+
+        if ($AtomicTechniqueParams.Length -gt 1) {
+            $ShortTestNumbers = $AtomicTechniqueParams[-1]
+        }
+
+        if ($null -eq $TestNumbers -and $null -ne $ShortTestNumbers) {
+            $TestNumbers = $ShortTestNumbers -split ','
+        }
+
         if ($isLoggingModuleSet) {
             if (Get-Module -name $LoggingModule) {
                 Write-Verbose "Using Logger: $LoggingModule"
@@ -193,104 +211,8 @@
                 return
             }
 
-            # Since there might a comma(T1559-1,2,3) Powershell takes it as array.
-            # So converting it back to string.
-            if ($AtomicTechnique -is [array]) {
-                $AtomicTechnique = $AtomicTechnique -join ","
-            }
-
-            # Splitting Atomic Technique short form into technique and test numbers.
-            $AtomicTechniqueParams = ($AtomicTechnique -split '-')
-            $AtomicTechnique = $AtomicTechniqueParams[0]
-
-            if ($AtomicTechniqueParams.Length -gt 1) {
-                $ShortTestNumbers = $AtomicTechniqueParams[-1]
-            }
-
-            if ($null -eq $TestNumbers -and $null -ne $ShortTestNumbers) {
-                $TestNumbers = $ShortTestNumbers -split ','
-            }
-
-            # Here we're rebuilding an equivalent command line to put in the logs
-            $commandLine = "Invoke-AtomicTest $AtomicTechnique"
-
-            if ($ShowDetails -ne $false) {
-                $commandLine = "$commandLine -ShowDetails $ShowDetails"
-            }
-
-            if ($ShowDetailsBrief -ne $false) {
-                $commandLine = "$commandLine -ShowDetailsBrief $ShowDetailsBrief"
-            }
-
-            if ($null -ne $TestNumbers) {
-                $commandLine = "$commandLine -TestNumbers $TestNumbers"
-            }
-
-            if ($null -ne $TestNames) {
-                $commandLine = "$commandLine -TestNames $TestNames"
-            }
-
-            if ($null -ne $TestGuids) {
-                $commandLine = "$commandLine -TestGuids $TestGuids"
-            }
-
-            $commandLine = "$commandLine -PathToAtomicsFolder $PathToAtomicsFolder"
-
-            if ($CheckPrereqs -ne $false) {
-                $commandLine = "$commandLine -CheckPrereqs $CheckPrereqs"
-            }
-
-            if ($PromptForInputArgs -ne $false) {
-                $commandLine = "$commandLine -PromptForInputArgs $PromptForInputArgs"
-            }
-
-            if ($GetPrereqs -ne $false) {
-                $commandLine = "$commandLine -GetPrereqs $GetPrereqs"
-            }
-
-            if ($Cleanup -ne $false) {
-                $commandLine = "$commandLine -Cleanup $Cleanup"
-            }
-
-            if ($NoExecutionLog -ne $false) {
-                $commandLine = "$commandLine -NoExecutionLog $NoExecutionLog"
-            }
-
-            $commandLine = "$commandLine -ExecutionLogPath $ExecutionLogPath"
-
-            if ($Force -ne $false) {
-                $commandLine = "$commandLine -Force $Force"
-            }
-
-            if ($InputArgs -ne $null) {
-                $commandLine = "$commandLine -InputArgs $InputArgs"
-            }
-
-            $commandLine = "$commandLine -TimeoutSeconds $TimeoutSeconds"
-            if ($PSBoundParameters.ContainsKey('Session')) {
-                if ( $null -eq $Session ) {
-                    Write-Error "The provided session is null and cannot be used."
-                    continue
-                }
-                else {
-                    $commandLine = "$commandLine -Session $Session"
-                }
-            }
-
-            if ($Interactive -ne $false) {
-                $commandLine = "$commandLine -Interactive $Interactive"
-            }
-
-            if ($KeepStdOutStdErrFiles -ne $false) {
-                $commandLine = "$commandLine -KeepStdOutStdErrFiles $KeepStdOutStdErrFiles"
-            }
-
-            if ($null -ne $LoggingModule) {
-                $commandLine = "$commandLine -LoggingModule $LoggingModule"
-            }
-
             $startTime = Get-Date
-            &"$LoggingModule\Start-ExecutionLog" $startTime $ExecutionLogPath $executionHostname $executionUser $commandLine (-Not($IsLinux -or $IsMacOS))
+            &"$LoggingModule\Start-ExecutionLog" $startTime $ExecutionLogPath $executionHostname $executionUser $MyInvocation.Line (-Not($IsLinux -or $IsMacOS))
         }
 
         function Platform-IncludesCloud {
@@ -471,10 +393,10 @@
                     elseif ($Cleanup) {
                         Write-KeyValue "Executing cleanup for test: " $testId
                         $final_command = Merge-InputArgs $test.executor.cleanup_command $test $InputArgs $PathToPayloads
-                        if (Get-Command 'Invoke-ARTPreAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPreAtomicCleanupHook $test $InputArgs}
+                        if (Get-Command 'Invoke-ARTPreAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPreAtomicCleanupHook $test $InputArgs }
                         $res = Invoke-ExecuteCommand $final_command $test.executor.name $executionPlatform $TimeoutSeconds $session -Interactive:$Interactive
                         Write-KeyValue "Done executing cleanup for test: " $testId
-                        if (Get-Command 'Invoke-ARTPostAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicCleanupHook $test $InputArgs}
+                        if (Get-Command 'Invoke-ARTPostAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicCleanupHook $test $InputArgs }
                         if ($(Test-IncludesTerraform $AT $testCount)) {
                             Remove-TerraformFiles $AT $testCount
                         }
@@ -486,7 +408,7 @@
                         if (Get-Command 'Invoke-ARTPreAtomicHook' -errorAction SilentlyContinue) { Invoke-ARTPreAtomicHook $test $InputArgs }
                         $res = Invoke-ExecuteCommand $final_command $test.executor.name $executionPlatform $TimeoutSeconds $session -Interactive:$Interactive
                         Write-Host "Exit code: $($res.ExitCode)"
-                        if (Get-Command 'Invoke-ARTPostAtomicHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicHook $test $InputArgs}
+                        if (Get-Command 'Invoke-ARTPostAtomicHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicHook $test $InputArgs }
                         $stopTime = Get-Date
                         if ($isLoggingModuleSet) {
                             &"$LoggingModule\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS))
