@@ -135,205 +135,27 @@
         $executionPlatform, $isElevated, $tmpDir, $executionHostname, $executionUser = Get-TargetInfo $Session
         $PathToPayloads = if ($Session) { "$tmpDir`AtomicRedTeam" }  else { $PathToAtomicsFolder }
 
-        $isLoggingModuleSet = $false
         if (-not $NoExecutionLog) {
-            $isLoggingModuleSet = $true
-            if (-not $PSBoundParameters.ContainsKey('LoggingModule')) {
-                # no logging module explicitly set
-                # syslog logger
-                $syslogOptionsSet = [bool]$artConfig.syslogServer -and [bool]$artConfig.syslogPort
-                if ( $artConfig.LoggingModule -eq "Syslog-ExecutionLogger" -or (($artConfig.LoggingModule -eq '') -and $syslogOptionsSet) ) {
-                    if ($syslogOptionsSet) {
-                        $LoggingModule = "Syslog-ExecutionLogger"
-                    }
-                    else {
-                        Write-Host -Fore Yellow "Config.ps1 specified: Syslog-ExecutionLogger, but the syslogServer and syslogPort must be specified. Using the default logger instead"
-                        $LoggingModule = "Default-ExecutionLogger"
-                    }
-                }
-                elseif (-not [bool]$artConfig.LoggingModule) {
-                    # loggingModule is blank (not set), so use the default logger
-                    $LoggingModule = "Default-ExecutionLogger"
-                }
-                else {
-                    $LoggingModule = $artConfig.LoggingModule
-                }
-            }
-        }
-
-        if ($isLoggingModuleSet) {
-            if (Get-Module -name $LoggingModule) {
-                Write-Verbose "Using Logger: $LoggingModule"
-            }
-            else {
-                Write-Host -Fore Yellow "Logger not found: ", $LoggingModule
-            }
-
-            # Change the defult logFile extension from csv to json and add a timestamp if using the Attire-ExecutionLogger
-            if ($LoggingModule -eq "Attire-ExecutionLogger") { $ExecutionLogPath = $ExecutionLogPath.Replace("Invoke-AtomicTest-ExecutionLog.csv", "Invoke-AtomicTest-ExecutionLog-timestamp.json") }
-            $ExecutionLogPath = $ExecutionLogPath.Replace("timestamp", $(Get-Date -UFormat %s))
-
-            if (Get-Command "$LoggingModule\Start-ExecutionLog" -erroraction silentlycontinue) {
-                if (Get-Command "$LoggingModule\Write-ExecutionLog" -erroraction silentlycontinue) {
-                    if (Get-Command "$LoggingModule\Stop-ExecutionLog" -erroraction silentlycontinue) {
-                        Write-Verbose "All logging commands found"
-                    }
-                    else {
-                        Write-Host "Stop-ExecutionLog not found or loaded from the wrong module"
-                        return
-                    }
-                }
-                else {
-                    Write-Host "Write-ExecutionLog not found or loaded from the wrong module"
-                    return
-                }
-            }
-            else {
-                Write-Host "Start-ExecutionLog not found or loaded from the wrong module"
-                return
-            }
-
-            # Since there might a comma(T1559-1,2,3) Powershell takes it as array.
-            # So converting it back to string.
-            if ($AtomicTechnique -is [array]) {
-                $AtomicTechnique = $AtomicTechnique -join ","
-            }
-
-            # Splitting Atomic Technique short form into technique and test numbers.
-            $AtomicTechniqueParams = ($AtomicTechnique -split '-')
-            $AtomicTechnique = $AtomicTechniqueParams[0]
-
-            if ($AtomicTechniqueParams.Length -gt 1) {
-                $ShortTestNumbers = $AtomicTechniqueParams[-1]
-            }
-
-            if ($null -eq $TestNumbers -and $null -ne $ShortTestNumbers) {
-                $TestNumbers = $ShortTestNumbers -split ','
-            }
-
-            # Here we're rebuilding an equivalent command line to put in the logs
-            $commandLine = "Invoke-AtomicTest $AtomicTechnique"
-
-            if ($ShowDetails -ne $false) {
-                $commandLine = "$commandLine -ShowDetails $ShowDetails"
-            }
-
-            if ($ShowDetailsBrief -ne $false) {
-                $commandLine = "$commandLine -ShowDetailsBrief $ShowDetailsBrief"
-            }
-
-            if ($null -ne $TestNumbers) {
-                $commandLine = "$commandLine -TestNumbers $TestNumbers"
-            }
-
-            if ($null -ne $TestNames) {
-                $commandLine = "$commandLine -TestNames $TestNames"
-            }
-
-            if ($null -ne $TestGuids) {
-                $commandLine = "$commandLine -TestGuids $TestGuids"
-            }
-
-            $commandLine = "$commandLine -PathToAtomicsFolder $PathToAtomicsFolder"
-
-            if ($CheckPrereqs -ne $false) {
-                $commandLine = "$commandLine -CheckPrereqs $CheckPrereqs"
-            }
-
-            if ($PromptForInputArgs -ne $false) {
-                $commandLine = "$commandLine -PromptForInputArgs $PromptForInputArgs"
-            }
-
-            if ($GetPrereqs -ne $false) {
-                $commandLine = "$commandLine -GetPrereqs $GetPrereqs"
-            }
-
-            if ($Cleanup -ne $false) {
-                $commandLine = "$commandLine -Cleanup $Cleanup"
-            }
-
-            if ($NoExecutionLog -ne $false) {
-                $commandLine = "$commandLine -NoExecutionLog $NoExecutionLog"
-            }
-
-            $commandLine = "$commandLine -ExecutionLogPath $ExecutionLogPath"
-
-            if ($Force -ne $false) {
-                $commandLine = "$commandLine -Force $Force"
-            }
-
-            if ($InputArgs -ne $null) {
-                $commandLine = "$commandLine -InputArgs $InputArgs"
-            }
-
-            $commandLine = "$commandLine -TimeoutSeconds $TimeoutSeconds"
-            if ($PSBoundParameters.ContainsKey('Session')) {
-                if ( $null -eq $Session ) {
-                    Write-Error "The provided session is null and cannot be used."
-                    continue
-                }
-                else {
-                    $commandLine = "$commandLine -Session $Session"
-                }
-            }
-
-            if ($Interactive -ne $false) {
-                $commandLine = "$commandLine -Interactive $Interactive"
-            }
-
-            if ($KeepStdOutStdErrFiles -ne $false) {
-                $commandLine = "$commandLine -KeepStdOutStdErrFiles $KeepStdOutStdErrFiles"
-            }
-
-            if ($null -ne $LoggingModule) {
-                $commandLine = "$commandLine -LoggingModule $LoggingModule"
-            }
-
+            $LoggingModule = Get-ExecutionLogger $LoggingModule $artConfig
             $startTime = Get-Date
-            &"$LoggingModule\Start-ExecutionLog" $startTime $ExecutionLogPath $executionHostname $executionUser $commandLine (-Not($IsLinux -or $IsMacOS))
+            &"$LoggingModule\Start-ExecutionLog" $startTime $ExecutionLogPath $executionHostname $executionUser $MyInvocation.Line (-Not($IsLinux -or $IsMacOS))
+        }
+        # Since there might a comma(T1559-1,2,3) Powershell takes it as array.
+        # So converting it back to string.
+        if ($AtomicTechnique -is [array]) {
+            $AtomicTechnique = $AtomicTechnique -join ","
         }
 
-        function Platform-IncludesCloud {
-            $cloud = ('office-365', 'azure-ad', 'google-workspace', 'saas', 'iaas', 'containers', 'iaas:aws', 'iaas:azure', 'iaas:gcp')
-            foreach ($platform in $test.supported_platforms) {
-                if ($cloud -contains $platform) {
-                    return $true
-                }
-            }
-            return $false
+        # Splitting Atomic Technique short form into technique and test numbers.
+        $AtomicTechniqueParams = ($AtomicTechnique -split '-')
+        $AtomicTechnique = $AtomicTechniqueParams[0]
+
+        if ($AtomicTechniqueParams.Length -gt 1) {
+            $ShortTestNumbers = $AtomicTechniqueParams[-1]
         }
 
-        function Test-IncludesTerraform($AT, $testCount) {
-            $AT = $AT.ToUpper()
-            $pathToTerraform = Join-Path $PathToAtomicsFolder "\$AT\src\$AT-$testCount\$AT-$testCount.tf"
-            $cloud = ('iaas', 'containers', 'iaas:aws', 'iaas:azure', 'iaas:gcp')
-            foreach ($platform in $test.supported_platforms) {
-                if ($cloud -contains $platform) {
-                    return $(Test-Path -Path $pathToTerraform)
-                }
-            }
-            return $false
-        }
-
-        function Build-TFVars($AT, $testCount, $InputArgs) {
-            $tmpDirPath = Join-Path $PathToAtomicsFolder "\$AT\src\$AT-$testCount"
-            if ($InputArgs) {
-                $destinationVarsPath = Join-Path "$tmpDirPath" "terraform.tfvars.json"
-                $InputArgs | ConvertTo-Json | Out-File -FilePath $destinationVarsPath
-            }
-        }
-
-        function Remove-TerraformFiles($AT, $testCount) {
-            $tmpDirPath = Join-Path $PathToAtomicsFolder "\$AT\src\$AT-$testCount"
-            Write-Host $tmpDirPath
-            $tfStateFile = Join-Path $tmpDirPath "terraform.tfstate"
-            $tfvarsFile = Join-Path $tmpDirPath "terraform.tfvars.json"
-            if ($(Test-Path $tfvarsFile)) {
-                Remove-Item -LiteralPath $tfvarsFile -Force
-            }
-            if ($(Test-Path $tfStateFile)) {
-                (Get-ChildItem -Path $tmpDirPath).Fullname -match "terraform.tfstate*" | Remove-Item -Force
-            }
+        if ($null -eq $TestNumbers -and $null -ne $ShortTestNumbers) {
+            $TestNumbers = $ShortTestNumbers -split ','
         }
 
         function Invoke-AtomicTestSingle ($AT) {
@@ -369,7 +191,7 @@
                     $testCount++
 
                     if (-not $anyOS) {
-                        if ( -not $(Platform-IncludesCloud) -and -Not $test.supported_platforms.Contains($executionPlatform) ) {
+                        if ( -not $(Test-IncludesCloud $test) -and -Not $test.supported_platforms.Contains($executionPlatform) ) {
                             Write-Verbose -Message "Unable to run non-$executionPlatform tests"
                             continue
                         }
@@ -475,7 +297,7 @@
                         $res = Invoke-ExecuteCommand $final_command $test.executor.name $executionPlatform $TimeoutSeconds $session -Interactive:$Interactive
                         Write-KeyValue "Done executing cleanup for test: " $testId
                         if (Get-Command 'Invoke-ARTPostAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicCleanupHook $test $InputArgs }
-                        if ($(Test-IncludesTerraform $AT $testCount)) {
+                        if ($(Test-IncludesTerraform $test $AT $testCount)) {
                             Remove-TerraformFiles $AT $testCount
                         }
                     }
@@ -488,7 +310,7 @@
                         Write-Host "Exit code: $($res.ExitCode)"
                         if (Get-Command 'Invoke-ARTPostAtomicHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicHook $test $InputArgs }
                         $stopTime = Get-Date
-                        if ($isLoggingModuleSet) {
+                        if (-not $NoExecutionLog) {
                             &"$LoggingModule\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS))
                         }
                         Write-KeyValue "Done executing test: " $testId
@@ -520,7 +342,7 @@
             Invoke-AtomicTestSingle $AtomicTechnique
         }
 
-        if ($isLoggingModuleSet) {
+        if (-not $NoExecutionLog) {
             &"$LoggingModule\Stop-ExecutionLog" $startTime $ExecutionLogPath $executionHostname $executionUser (-Not($IsLinux -or $IsMacOS))
         }
 
