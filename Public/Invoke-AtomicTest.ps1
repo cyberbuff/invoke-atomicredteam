@@ -479,6 +479,11 @@ function Invoke-AtomicTest {
                                     Write-Host -ForegroundColor Red "Failed to meet prereq: $description"
                                 }
                             }
+                            if ($isLoggingModuleSet) {
+                                ConvertTo-LoggerArray $LoggingModule | ForEach-Object {
+                                    &"$_\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS)) $dep.description $Cleanup
+                                }
+                            }
                         }
                     }
                     elseif ($Cleanup) {
@@ -490,6 +495,11 @@ function Invoke-AtomicTest {
                         if (Get-Command 'Invoke-ARTPostAtomicCleanupHook' -errorAction SilentlyContinue) { Invoke-ARTPostAtomicCleanupHook $test $InputArgs }
                         if ($(Test-IncludesTerraform $AT $testCount)) {
                             Remove-TerraformFiles $AT $testCount
+                        }
+                        if ($isLoggingModuleSet) {
+                            ConvertTo-LoggerArray $LoggingModule | ForEach-Object {
+                                &"$_\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS)) $GetPrereqs $Cleanup
+                            }
                         }
                     }
                     else {
@@ -503,7 +513,7 @@ function Invoke-AtomicTest {
                         $stopTime = Get-Date
                         if ($isLoggingModuleSet) {
                             ConvertTo-LoggerArray $LoggingModule | ForEach-Object {
-                                &"$_\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS))
+                                &"$_\Write-ExecutionLog" $startTime $stopTime $AT $testCount $test.name $test.auto_generated_guid $test.executor.name $test.description $final_command $ExecutionLogPath $executionHostname $executionUser $res (-Not($IsLinux -or $IsMacOS))  $GetPrereqs $Cleanup
                             }
                         }
                         Write-KeyValue "Done executing test: " $testId

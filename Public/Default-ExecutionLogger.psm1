@@ -2,7 +2,7 @@ function Start-ExecutionLog($startTime, $logPath, $targetHostname, $targetUser, 
 
 }
 
-function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testName, $testGuid, $testExecutor, $testDescription, $command, $logPath, $targetHostname, $targetUser, $res, $isWindows) {
+function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testName, $testGuid, $testExecutor, $testDescription, $command, $logPath, $targetHostname, $targetUser, $res, $isWindows, $GetPrereqs, $Cleanup) {
     if (!(Test-Path $logPath)) {
         New-Item $logPath -Force -ItemType File | Out-Null
     }
@@ -21,6 +21,8 @@ function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testNa
         "GUID"                   = $testGuid
         "ProcessId"              = $res.ProcessId
         "ExitCode"               = $res.ExitCode
+        "GetPreReqs"             = $GetPrereqs
+        "Cleanup"                = $Cleanup
     }
 
     $msg | Export-Csv -Path $LogPath -NoTypeInformation -Append

@@ -4,7 +4,7 @@ function Start-ExecutionLog($startTime, $logPath, $targetHostname, $targetUser, 
     }
 }
 
-function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testName, $testGuid, $testExecutor, $testDescription, $command, $logPath, $targetHostname, $targetUser, $res, $isWindows) {
+function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testName, $testGuid, $testExecutor, $testDescription, $command, $logPath, $targetHostname, $targetUser, $res, $isWindows, $GetPrereqs, $Cleanup) {
     $timeUTC = (Get-Date($startTime).toUniversalTime() -uformat "%Y-%m-%dT%H:%M:%SZ").ToString()
     $timeLocal = (Get-Date($startTime) -uformat "%Y-%m-%dT%H:%M:%SZ").ToString()
     $ipAddress = Get-PreferredIPAddress $isWindows
@@ -23,6 +23,8 @@ function Write-ExecutionLog($startTime, $stopTime, $technique, $testNum, $testNa
         "CustomTag"              = $artConfig.CustomTag
         "ProcessId"              = $res.ProcessId
         "ExitCode"               = $res.ExitCode
+        "GetPreReqs"             = $GetPrereqs
+        "Cleanup"                = $Cleanup
     }
 
     Write-EventLog  -Source "Applications and Services Logs" -LogName "Atomic Red Team" -EventID 3001 -EntryType Information -Message $msg -Category 1 -RawData 10, 20
