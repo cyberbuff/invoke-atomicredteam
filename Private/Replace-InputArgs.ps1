@@ -9,6 +9,9 @@ function Get-InputArgs([hashtable]$ip, $customInputArgs, $PathToAtomicsFolder) {
             # replace default with user supplied
             $defaultArgs.set_Item($key, $customInputArgs[$key])
         }
+        else {
+            Write-Verbose "The specified input argument *$key* was ignored as not applicable"
+        }
     }
     $defaultArgs
 }

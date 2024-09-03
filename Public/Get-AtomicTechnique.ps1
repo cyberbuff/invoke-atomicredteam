@@ -1,76 +1,76 @@
 filter Get-AtomicTechnique {
     <#
     .SYNOPSIS
-    
+
     Retrieve and validate an atomic technique.
-    
+
     .DESCRIPTION
-    
+
     Get-AtomicTechnique retrieves and validates one or more atomic techniques. Get-AtomicTechnique supports retrieval from YAML files or from a raw YAML string.
-    
+
     This function facilitates the following use cases:
-    
+
     1) Validation prior to execution of atomic tests.
     2) Writing code to reason over one or more atomic techniques/tests.
     3) Representing atomic techniques/tests in a format that is more conducive to PowerShell. ConvertFrom-Yaml returns a large, complicated hashtable that is difficult to work with and reason over. Get-AtomicTechnique helps abstract those challenges away.
     4) Representing atomic techniques/tests in a format that can be piped directly to ConvertTo-Yaml.
-    
+
     .PARAMETER Path
-    
+
     Specifies the path to an atomic technique YAML file. Get-AtomicTechnique expects that the file extension be .yaml or .yml and that it is well-formed YAML content.
-    
+
     .PARAMETER Yaml
-    
+
     Specifies a single string consisting of raw atomic technique YAML.
-    
+
     .EXAMPLE
-    
+
     Get-ChildItem -Path C:\atomic-red-team\atomics\* -Recurse -Include 'T*.yaml' | Get-AtomicTechnique
-    
+
     .EXAMPLE
-    
+
     Get-Item C:\atomic-red-team\atomics\T1117\T1117.yaml | Get-AtomicTechnique
-    
+
     .EXAMPLE
-    
+
     Get-AtomicTechnique -Path C:\atomic-red-team\atomics\T1117\T1117.yaml
-    
+
     .EXAMPLE
-    
+
     $Yaml = @'
     ---
     attack_technique: T1152
     display_name: Launchctl
-    
+
     atomic_tests:
     - name: Launchctl
       description: |
         Utilize launchctl
-    
+
       supported_platforms:
         - macos
-    
+
       executor:
         name: sh
         command: |
           launchctl submit -l evil -- /Applications/Calculator.app/Contents/MacOS/Calculator
     '@
-    
+
     Get-AtomicTechnique -Yaml $Yaml
-    
+
     .INPUTS
-    
+
     System.IO.FileInfo
-    
+
     The output of Get-Item and Get-ChildItem can be piped directly into Get-AtomicTechnique.
-    
+
     .OUTPUTS
-    
+
     AtomicTechnique
-    
+
     Outputs an object representing a parsed and validated atomic technique.
     #>
-    
+
     [CmdletBinding(DefaultParameterSetName = 'FilePath')]
     [OutputType([AtomicTechnique])]
     param (
@@ -103,16 +103,17 @@ filter Get-AtomicTechnique {
 
     $ParsedYaml = $null
 
-    $ValidSupportedPlatforms = @('windows', 'macos', 'linux')
+    $ValidSupportedPlatforms = @('windows', 'macos', 'linux', 'office-365', 'azure-ad', 'google-workspace', 'saas', 'iaas', 'containers', 'iaas:aws', 'iaas:azure', 'iaas:gcp')
     $ValidInputArgTypes = @('Path', 'Url', 'String', 'Integer', 'Float')
-    $ValidExecutorTypes = @('command_prompt', 'sh', 'bash', 'powershell', 'manual')
+    $ValidExecutorTypes = @('command_prompt', 'sh', 'bash', 'powershell', 'manual', 'aws', 'az', 'gcloud', 'kubectl')
 
     # ConvertFrom-Yaml will throw a .NET exception rather than a PowerShell error.
     # Capture the exception and convert to PowerShell error so that the user can decide
     # how to handle the error.
     try {
         [Hashtable] $ParsedYaml = ConvertFrom-Yaml -Yaml $YamlContent
-    } catch {
+    }
+    catch {
         Write-Error $_
     }
 
@@ -142,7 +143,8 @@ filter Get-AtomicTechnique {
 
                 [String[]] $AttackTechnique = $ParsedYaml['attack_technique']
             }
-        } else {
+        }
+        else {
             if ((-not "$($ParsedYaml['attack_technique'])".StartsWith('T'))) {
                 # If the attack technique is a single entry, validate that it starts with the letter T.
                 Write-Warning "$ErrorStringPrefix Attack technique: $($ParsedYaml['attack_technique']). Attack techniques should start with the letter T."
@@ -226,8 +228,7 @@ filter Get-AtomicTechnique {
 
             foreach ($SupportedPlatform in $AtomicTest['supported_platforms']) {
                 if ($ValidSupportedPlatforms -cnotcontains $SupportedPlatform) {
-                    Write-Error "$ErrorStringPrefix[Atomic test name: $($AtomicTestInstance.name)] 'atomic_tests[$i].supported_platforms': '$SupportedPlatform' must be one of the following: $($ValidSupportedPlatforms -join ', ')."
-                    return
+                    Write-Warning "$ErrorStringPrefix[Atomic test name: $($AtomicTestInstance.name)] 'atomic_tests[$i].supported_platforms': '$SupportedPlatform' must be one of the following: $($ValidSupportedPlatforms -join ', ')."
                 }
             }
 
@@ -323,6 +324,7 @@ filter Get-AtomicTechnique {
                 $j = 0
 
                 foreach ($InputArgName in $AtomicTest['input_arguments'].Keys) {
+
                     $InputArgument = [AtomicInputArgument]::new()
 
                     if (-not $AtomicTest['input_arguments'][$InputArgName].ContainsKey('description')) {
@@ -407,7 +409,8 @@ filter Get-AtomicTechnique {
                 $ExecutorInstance = [AtomicExecutorManual]::new()
                 $ExecutorInstance.steps = $AtomicTest['executor']['steps']
                 $StringsWithPotentialInputArgs.Add($AtomicTest['executor']['steps'])
-            } else {
+            }
+            else {
                 if (-not $AtomicTest['executor'].ContainsKey('command')) {
                     Write-Error "$ErrorStringPrefix[Atomic test name: $($AtomicTestInstance.name)] 'atomic_tests[$i].executor.command' element is required when the '$($ValidExecutorTypes -join ', ')' executors are used."
                     return
@@ -437,7 +440,8 @@ filter Get-AtomicTechnique {
                 }
 
                 $ExecutorInstance.elevation_required = $AtomicTest['executor']['elevation_required']
-            } else {
+            }
+            else {
                 # if elevation_required is not present, default to false
                 $ExecutorInstance.elevation_required = $False
             }
@@ -458,11 +462,11 @@ filter Get-AtomicTechnique {
 
             $Regex = [Regex] '#\{(?<ArgName>[^}]+)\}'
             [String[]] $InputArgumentNamesFromExecutor = $StringsWithPotentialInputArgs |
-                ForEach-Object { $Regex.Matches($_) } |
-                Select-Object -ExpandProperty Groups |
-                Where-Object { $_.Name -eq 'ArgName' } |
-                Select-Object -ExpandProperty Value |
-                Sort-Object -Unique
+            ForEach-Object { $Regex.Matches($_) } |
+            Select-Object -ExpandProperty Groups |
+            Where-Object { $_.Name -eq 'ArgName' } |
+            Select-Object -ExpandProperty Value |
+            Sort-Object -Unique
 
 
             # Validate that all executor input arg names are defined input arg names.
@@ -495,5 +499,24 @@ filter Get-AtomicTechnique {
         $AtomicInstance.atomic_tests = $AtomicTests
 
         $AtomicInstance
+    }
+}
+
+
+# Tab completion for Atomic Tests
+function Get-TechniqueNumbers {
+    $PathToAtomicsFolder = if ($IsLinux -or $IsMacOS) { $Env:HOME + "/AtomicRedTeam/atomics" } else { $env:HOMEDRIVE + "\AtomicRedTeam\atomics" }
+    $techniqueNumbers = Get-ChildItem $PathToAtomicsFolder -Directory |
+    ForEach-Object { $_.BaseName }
+
+    return $techniqueNumbers
+}
+
+Register-ArgumentCompleter -CommandName 'Invoke-AtomicTest' -ParameterName 'AtomicTechnique' -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+
+    Get-TechniqueNumbers | Where-Object { $_ -like "$wordToComplete*" } |
+    ForEach-Object {
+        New-Object System.Management.Automation.CompletionResult $_, $_, 'ParameterValue', "Technique number $_"
     }
 }
