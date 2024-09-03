@@ -1,0 +1,34 @@
+name: "Code Tests"
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+    # Cancel redundant CI tests automatically
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  codecov:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 3
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: pester
+        run: |
+          Set-PSRepository psgallery -InstallationPolicy trusted
+          Install-Module -Name Pester -Force -SkipPublisherCheck;
+          $config = New-PesterConfiguration
+          $config.Run.Path = "."
+          $config.CodeCoverage.Enabled = $true
+          Invoke-Pester -Configuration $config
+        shell: pwsh
+      - name: Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.xml

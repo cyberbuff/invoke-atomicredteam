@@ -54,7 +54,7 @@ function Invoke-ExecuteCommand ($finalCommand, $executor, $executionPlatform, $T
         if ($session) {
             $scriptParentPath = Split-Path $import -Parent
             $fp = Join-Path $scriptParentPath "Invoke-Process.ps1"
-            $fp2 = Join-Path $scriptParentPath "Invoke-KillProcessTree.ps1"
+            $fp2 = Join-Path -Path (Get-Item $scriptParentPath).Parent -ChildPath "Public" -AdditionalChildPath "Invoke-KillProcessTree.ps1"
             invoke-command -Session $session -FilePath $fp
             invoke-command -Session $session -FilePath $fp2
             $res = invoke-command -Session $session -ScriptBlock { Invoke-Process -filename $Using:execExe -Arguments $Using:arguments -TimeoutSeconds $Using:TimeoutSeconds -stdoutFile "art-out.txt" -stderrFile "art-err.txt" }
