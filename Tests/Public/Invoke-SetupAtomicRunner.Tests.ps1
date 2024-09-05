@@ -37,8 +37,8 @@ Describe "Invoke-SetupAtomicRunner" {
             }
         }
 
-        Context "Should run as non-root" -Tag "Non-Root" {
-            It "should run with elevated privileges" -Skip:$isWindows {
+        Context "Should run as non-root" -Tag "Non-Root" -Skip:$isWindows {
+            It "should run with elevated privileges"{
                 $isAdmin = $(id -u) -eq 0
                 $isAdmin | Should -Be $false
             }
