@@ -118,13 +118,6 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
         Invoke-AtomicTest $_ -GetPrereqs
     }
 
-    AfterEach {
-        Remove-Module -Name "Syslog-ExecutionLogger" -ErrorAction SilentlyContinue
-        Remove-Module -Name "Attire-ExecutionLogger" -ErrorAction SilentlyContinue
-        Remove-Module -Name "Default-ExecutionLogger" -ErrorAction SilentlyContinue
-        Remove-Module -Name "WinEvent-ExecutionLogger" -ErrorAction SilentlyContinue
-    }
-
     It "Run with AttireLogger" {
         Invoke-AtomicTest $_ -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath "timestamp.json"
         Test-Path *.json | Should -BeTrue
@@ -163,6 +156,10 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
 
     AfterEach {
         Invoke-AtomicTest $_ -Cleanup
+        Remove-Module -Name "Syslog-ExecutionLogger" -ErrorAction SilentlyContinue
+        Remove-Module -Name "Attire-ExecutionLogger" -ErrorAction SilentlyContinue
+        Remove-Module -Name "Default-ExecutionLogger" -ErrorAction SilentlyContinue
+        Remove-Module -Name "WinEvent-ExecutionLogger" -ErrorAction SilentlyContinue
     }
 }
 
