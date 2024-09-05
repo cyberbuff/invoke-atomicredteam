@@ -25,7 +25,7 @@ function Invoke-SetupAtomicRunner {
         }
     }
     else {
-        linux and macos check - doesn't auto-elevate
+        # linux and macos check - doesn't auto-elevate
         if ((id -u) -ne 0 ) {
             Throw "You must run the Invoke-SetupAtomicRunner script as root"
             exit
