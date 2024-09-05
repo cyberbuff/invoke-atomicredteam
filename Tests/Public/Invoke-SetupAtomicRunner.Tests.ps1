@@ -11,6 +11,7 @@ Describe "Invoke-SetupAtomicRunner" {
 
         Context "Should run as Root User" -Tag "Root" {
             BeforeAll {
+                Write-Host $(whoami)
                 if($isWindows){
                     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
                     $isAdmin | Should -BeTrue

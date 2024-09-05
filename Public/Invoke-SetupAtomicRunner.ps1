@@ -25,11 +25,11 @@ function Invoke-SetupAtomicRunner {
         }
     }
     else {
-        # linux and macos check - doesn't auto-elevate
-        # if ((id -u) -ne 0 ) {
-        #     Throw "You must run the Invoke-SetupAtomicRunner script as root"
-        #     exit
-        # }
+        linux and macos check - doesn't auto-elevate
+        if ((id -u) -ne 0 ) {
+            Throw "You must run the Invoke-SetupAtomicRunner script as root"
+            exit
+        }
     }
 
     if ($artConfig.basehostname.length -gt 15) { Throw "The hostname for this machine (minus the GUID) must be 15 characters or less. Please rename this computer." }
