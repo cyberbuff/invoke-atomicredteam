@@ -85,7 +85,7 @@ Describe "Run Atomics with Input Args for <name>" -ForEach @(
         );
     }
     @{ Name = "Windows"; ShouldSkip = !$IsWindows; Tests = @(
-            @{ Id = "T1070.006-10"; InputArgs =@{"days_to_modify" = "1" } }
+            @{ Id = "T1070.006-10"; InputArgs = @{"days_to_modify" = "1" } }
         );
     }
 ) {
