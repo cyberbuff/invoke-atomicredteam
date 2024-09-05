@@ -2,225 +2,142 @@ BeforeAll {
     Remove-Module -Name "Invoke-AtomicRedTeam" -ErrorAction SilentlyContinue
     $invokeAtomicPath = Join-Path (get-item $PSScriptRoot).parent.parent "Invoke-AtomicRedTeam.psd1"
     Import-Module $invokeAtomicPath -Force
+    Install-Module -Name Posh-SYSLOG -Force
 }
 
-Describe "Show Details" {
-
-    It "Show brief details for <id>" -ForEach @(
-        @{ Id = "T1497.001" }
-        @{ Id = "All" }
-    ) {
+Describe "Show Details for <id>" -ForEach @(
+    @{ Id = "T1497.001-1" }
+    @{ Id = "T1497.001" }
+    @{ Id = "All" }
+) {
+    It "Show details" {
         Invoke-AtomicTest $Id -ShowDetails 6>&1 | Out-Null
         $LASTEXITCODE | Should -Be 0
     }
 
-    It "Show brief details for <id>" -ForEach @(
-        @{ Id = "T1497.001" }
-        @{ Id = "All" }
-    ) {
+    It "Show brief details" {
         Invoke-AtomicTest $Id -ShowDetailsBrief 6>&1 | Out-Null
         $LASTEXITCODE | Should -Be 0
     }
 
-    It "Show brief details for <id> anyOS" -ForEach @(
-        @{ Id = "T1497.001" }
-        @{ Id = "All" }
-    ) {
+    It "Show brief details for any OS" {
         Invoke-AtomicTest $Id -ShowDetailsBrief -anyOS 6>&1 | Out-Null
         $LASTEXITCODE | Should -Be 0
     }
-
 }
 
+Describe "Check Prereqs for <name>" -ForEach @(
+    @{ Name = "Linux & MacOS"; Tests = @("T1070.006-1"); ShouldSkip = $IsWindows }
+    @{ Name = "Windows"; Tests = @("T1070.006-5"); ShouldSkip = !$IsWindows }
+) {
+    $PSDefaultParameterValues = @{ 'It:Skip' = $ShouldSkip }
 
-Describe "Check Prereqs for *nix" {
-    $PSDefaultParameterValues = @{ 'It:Skip' = $IsWindows }
-    It "Check Prereqs for <id>" -ForEach @(
-        @{ Id = "T1070.006-1" }
-    ) {
-        Invoke-AtomicTest $Id -Cleanup
-        $output = Invoke-AtomicTest $Id -CheckPrereqs 6>&1 | Out-String
-        $output | Should -Match "Prerequisites not met"
-        Invoke-AtomicTest $Id -GetPrereqs
-        $output = Invoke-AtomicTest $Id -CheckPrereqs 6>&1 | Out-String
-        $output | Should -Match "Prerequisites met"
-        Invoke-AtomicTest $Id -Cleanup
+    BeforeEach {
+        Invoke-AtomicTest $_ -Cleanup
     }
-}
 
-Describe "Check Prereqs for Windows" {
-    BeforeAll {
-        Import-Module PowerShellGet -Force
-    }
-    $PSDefaultParameterValues = @{ 'It:Skip' = $IsLinux -or $IsMacOS }
-
-    It "Check Prereqs for <id>" -ForEach @(
-        @{ Id = "T1070.006-5" }
-    ) {
-        $output = Invoke-AtomicTest $Id -CheckPrereqs 6>&1 | Out-String
+    It "Check Prereqs for <_>" -ForEach $Tests {
+        $output = Invoke-AtomicTest $_ -CheckPrereqs 6>&1 | Out-String
         $output | Should -Match "Prerequisites not met"
-        Invoke-AtomicTest $Id -GetPrereqs
-        $output = Invoke-AtomicTest $Id -CheckPrereqs 6>&1 | Out-String
+        Invoke-AtomicTest $_ -GetPrereqs
+        $output = Invoke-AtomicTest $_ -CheckPrereqs 6>&1 | Out-String
         $output | Should -Match "Prerequisites met"
     }
 
+    AfterEach {
+        Invoke-AtomicTest $_ -Cleanup
+    }
 }
 
-Describe "Run macOS tests" {
+Describe "Run Atomics for <name>" -ForEach @(
+    @{ Name = "Linux"; Tests = @("T1070.006-1"); ShouldSkip = !$IsLinux }
+    @{ Name = "MacOS"; Tests = @("T1497.001-4"); ShouldSkip = !$IsMacOS }
+    @{ Name = "Windows"; Tests = @("T1057-2", "T1497.001-3", "T1497.001-5"); ShouldSkip = !$IsWindows }
+) {
+    $PSDefaultParameterValues = @{ 'It:Skip' = $ShouldSkip }
+
     BeforeEach {
-        Mock -ModuleName  "Invoke-AtomicRedTeam" -CommandName "Read-Host" -MockWith { return "/tmp/atomic.txt" }
+        Invoke-AtomicTest $_ -GetPrereqs
     }
-    $PSDefaultParameterValues = @{ 'It:Skip' = $IsLinux -or $IsWindows }
 
-    It "Run <id>" -ForEach @(
-        @{ Id = "T1497.001"; TestNumbers = 4 }
-    ) {
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -GetPrereqs
-        $output = Invoke-AtomicTest $Id 6>&1 | Out-String
+    It "Run test <_>" -ForEach $Tests {
+        $output = Invoke-AtomicTest $_ 6>&1 | Out-String
         $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -Cleanup
     }
 
-    It "Run <id> with InputArgs" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 1 }
-    ) {
-        $InputArgs = @{"target_filename" = "/tmp/atomic.txt" }
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs -Cleanup
-    }
-
-    It "Run <id> with InputArgs Prompt" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 1 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs -Cleanup
-    }
-
-
-    It "Run <id> with timeout" -ForEach @(
-        @{ Id = "T1018"; TestNumbers = 6 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -TimeoutSeconds 0 6>&1 | Out-String
+    It "Run test <_> with Timeout" -ForEach $Tests {
+        $output = Invoke-AtomicTest $_ -TimeoutSeconds 0 6>&1 | Out-String
         $output | Should -Match "Process Timed out after 0 seconds"
     }
 
-    It "Run with AttireLogger" {
-        Invoke-AtomicTest "T1070.006-1" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-1" -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath timestamp.json
-        Test-Path *.json | Should -Be $true
-        Invoke-AtomicTest "T1070.006-1" -Cleanup
-        Remove-Item *.json -ErrorAction SilentlyContinue
-    }
-
-    It "Run with SysLogEventLogger" {
-        #TODO: Mock send-syslog function here.
-        Invoke-AtomicTest "T1070.006-1" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-1" -LoggingModule "Syslog-ExecutionLogger"
-        Invoke-AtomicTest "T1070.006-1" -Cleanup
+    AfterEach {
+        Invoke-AtomicTest $_ -Cleanup
     }
 }
 
-Describe "Run Ubuntu tests" {
+Describe "Run Atomics with Input Args for <name>" -ForEach @(
+    @{ Name = "Linux"; ShouldShouldSkip = !$IsLinux; Tests = @(
+            @{ Id = "T1070.006-1"; InputArgs = @{"target_filename" = "/tmp/atomic.txt" } }
+        );
+    }
+    @{ Name = "MacOS"; ShouldShouldSkip = !$IsMacOS; Tests = @(
+            @{ Id = "T1070.006-1"; InputArgs = @{"target_filename" = "/tmp/atomic.txt" } }
+        );
+    }
+    @{ Name = "Windows"; ShouldShouldSkip = !$IsWindows; Tests = @(
+            @{ Id = "T1070.006-10"; InputArgs =@{"days_to_modify" = "1" } }
+        );
+    }
+) {
+    $PSDefaultParameterValues = @{ 'It:Skip' = $ShouldSkip; 'It:ForEach' = $Tests }
     BeforeEach {
-        Mock -ModuleName  "Invoke-AtomicRedTeam" -CommandName "Read-Host" -MockWith { return "/tmp/atomic.txt" }
+        Invoke-AtomicTest $Id -InputArgs $InputArgs -GetPrereqs
     }
 
-    $PSDefaultParameterValues = @{ 'It:Skip' = $IsMacOS -or $IsWindows }
-
-    It "Run <id>" -ForEach @(
-        @{ Id = "T1497.001"; TestNumbers = 1 }
-    ) {
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -GetPrereqs
-        $output = Invoke-AtomicTest $Id 6>&1 | Out-String
+    It "Run <id> with InputArgs" {
+        $output = Invoke-AtomicTest $Id -InputArgs $InputArgs 6>&1 | Out-String
         $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -Cleanup
+        Invoke-AtomicTest $Id -InputArgs $InputArgs -Cleanup
     }
 
-    It "Run <id> with InputArgs" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 1 }
-    ) {
-        $InputArgs = @{"target_filename" = "/tmp/atomic.txt" }
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs -Cleanup
+    AfterEach {
+        Invoke-AtomicTest $Id -InputArgs $InputArgs -GetPrereqs
     }
 
-
-    It "Run <id> with InputArgs Prompt" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 1 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs -Cleanup
-    }
+}
 
 
-    It "Run <id> with timeout" -ForEach @(
-        @{ Id = "T1018"; TestNumbers = 6 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -TimeoutSeconds 0 6>&1 | Out-String
-        $output | Should -Match "Process Timed out after 0 seconds"
+Describe "Check LoggingFramework for <name>" -ForEach @(
+    @{ Name = "Linux"; Tests = @("T1070.006-1"); ShouldSkip = !$IsLinux }
+    @{ Name = "MacOS"; Tests = @("T1497.001-4"); ShouldSkip = !$IsMacOS }
+    @{ Name = "Windows"; Tests = @("T1057-2", "T1497.001-3", "T1497.001-5"); ShouldSkip = !$IsWindows }
+) {
+    $PSDefaultParameterValues = @{ 'It:Skip' = $ShouldSkip; 'It:ForEach' = $Tests }
+
+    BeforeEach {
+        Invoke-AtomicTest $_ -GetPrereqs
     }
 
     It "Run with AttireLogger" {
-        Invoke-AtomicTest "T1070.006-1" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-1" -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath timestamp.json
+        Invoke-AtomicTest $_ -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath "timestamp.json"
         Test-Path *.json | Should -Be $true
-        Invoke-AtomicTest "T1070.006-1" -Cleanup
         Remove-Item *.json -ErrorAction SilentlyContinue
     }
 
-    It "Run with SysLogEventLogger" {
-        #TODO: Mock send-syslog function here.
-        Invoke-AtomicTest "T1070.006-1" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-1" -LoggingModule "Syslog-ExecutionLogger"
-        Invoke-AtomicTest "T1070.006-1" -Cleanup
+    It "Run with Default-ExecutionLogger" {
+        Invoke-AtomicTest $_ -LoggingModule "Default-ExecutionLogger" -ExecutionLogPath  "$PSScriptRoot/temp.csv"
+        Test-Path "$PSScriptRoot/temp.csv" | Should -Be $true
+        Remove-Item "$PSScriptRoot/temp.csv" -ErrorAction SilentlyContinue
+    }
+
+    AfterEach {
+        Invoke-AtomicTest $_ -Cleanup
     }
 }
 
-Describe "Run Windows tests" {
-    BeforeEach {
-        Mock -ModuleName  "Invoke-AtomicRedTeam" -CommandName "Read-Host" -MockWith { return "3" }
-    }
 
+Describe "Run Windows Specific tests" {
     $PSDefaultParameterValues = @{ 'It:Skip' = $IsMacOS -or $IsLinux }
-
-    It "Run <id>" -ForEach @(
-        @{ Id = "T1057"; TestNumbers = 2 }
-        @{ Id = "T1497.001"; TestNumbers = 3 }
-        @{ Id = "T1497.001"; TestNumbers = 5 }
-    ) {
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -GetPrereqs
-        $output = Invoke-AtomicTest $Id 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -Cleanup
-    }
-
-    It "Run <id> with InputArgs" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 10 }
-    ) {
-        $InputArgs = @{"days_to_modify" = "1" }
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -InputArgs $InputArgs -Cleanup
-    }
-
-    It "Run <id> with InputArgs Prompt" -ForEach @(
-        @{ Id = "T1070.006"; TestNumbers = 10 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs 6>&1 | Out-String
-        $output | Should -Match "Exit code: 0"
-        Invoke-AtomicTest $Id -TestNumbers $TestNumbers -PromptForInputArgs -Cleanup
-    }
-
-    It "Run <id> with timeout" -ForEach @(
-        @{ Id = "T1018"; TestNumbers = 5 }
-    ) {
-        $output = Invoke-AtomicTest $Id -TestNumbers $TestNumbers -TimeoutSeconds 0 6>&1 | Out-String
-        $output | Should -Match "Process Timed out after 0 seconds"
-    }
 
     It "Run PSSession tests" {
         Write-Output "y" | cmd /c WinRM quickconfig
@@ -234,20 +151,6 @@ Describe "Run Windows tests" {
         Invoke-AtomicTest "T1070.006-5" -GetPrereqs
         Invoke-AtomicTest "T1070.006-5" -LoggingModule "WinEvent-ExecutionLogger"
         # TODO: Add test to check if event is logged
-        Invoke-AtomicTest "T1070.006-5" -Cleanup
-    }
-
-    It "Run with AttireLogger" {
-        Invoke-AtomicTest "T1070.006-5" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-5" -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath timestamp.json
-        Test-Path *.json | Should -Be $true
-        Invoke-AtomicTest "T1070.006-5" -Cleanup
-    }
-
-    It "Run with SysLogEventLogger" {
-        #TODO: Mock send-syslog function here.
-        Invoke-AtomicTest "T1070.006-5" -GetPrereqs
-        Invoke-AtomicTest "T1070.006-5" -LoggingModule "Syslog-ExecutionLogger"
         Invoke-AtomicTest "T1070.006-5" -Cleanup
     }
 
