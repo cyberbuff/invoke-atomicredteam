@@ -21,17 +21,18 @@ jobs:
       - name: pester (Root tests)
         if: runner.os != 'Windows'
         run: |
-          sudo pwsh
-          Set-PSRepository psgallery -InstallationPolicy trusted
-          Install-Module -Name Pester -Force -SkipPublisherCheck
-          Install-Module -Name powershell-yaml -Force -SkipPublisherCheck
-          $config = New-PesterConfiguration
-          $config.Run.Path = "."
-          $config.CodeCoverage.Enabled = $true
-          $config.CodeCoverage.OutputFormat = 'JaCoCo'
-          $config.CodeCoverage.OutputPath = 'coverage-root.xml'
-          $config.Filter.Tag = 'Root'
-          Invoke-Pester -Configuration $config
+          sudo pwsh -Command {
+            Set-PSRepository psgallery -InstallationPolicy trusted
+            Install-Module -Name Pester -Force -SkipPublisherCheck
+            Install-Module -Name powershell-yaml -Force -SkipPublisherCheck
+            $config = New-PesterConfiguration
+            $config.Run.Path = "."
+            $config.CodeCoverage.Enabled = $true
+            $config.CodeCoverage.OutputFormat = 'JaCoCo'
+            $config.CodeCoverage.OutputPath = 'coverage-root.xml'
+            $config.Filter.Tag = 'Root'
+            Invoke-Pester -Configuration $config
+          }
         shell: pwsh
       - name: pester (non-Root tests)
         run: |
