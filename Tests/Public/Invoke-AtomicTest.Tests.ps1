@@ -76,15 +76,15 @@ Describe "Run Atomics for <name>" -ForEach @(
 }
 
 Describe "Run Atomics with Input Args for <name>" -ForEach @(
-    @{ Name = "Linux"; ShouldShouldSkip = !$IsLinux; Tests = @(
+    @{ Name = "Linux"; ShouldSkip = !$IsLinux; Tests = @(
             @{ Id = "T1070.006-1"; InputArgs = @{"target_filename" = "/tmp/atomic.txt" } }
         );
     }
-    @{ Name = "MacOS"; ShouldShouldSkip = !$IsMacOS; Tests = @(
+    @{ Name = "MacOS"; ShouldSkip = !$IsMacOS; Tests = @(
             @{ Id = "T1070.006-1"; InputArgs = @{"target_filename" = "/tmp/atomic.txt" } }
         );
     }
-    @{ Name = "Windows"; ShouldShouldSkip = !$IsWindows; Tests = @(
+    @{ Name = "Windows"; ShouldSkip = !$IsWindows; Tests = @(
             @{ Id = "T1070.006-10"; InputArgs =@{"days_to_modify" = "1" } }
         );
     }
