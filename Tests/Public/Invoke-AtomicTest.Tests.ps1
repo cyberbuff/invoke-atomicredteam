@@ -172,12 +172,12 @@ Describe "Run Windows Specific tests" {
     }
 
     It "Run with WinEventLogger" {
-        Remove-EventLog -Source "Applications and Services Logs" -LogName "Atomic Red Team"
+        Remove-EventLog -LogName "Atomic Red Team"
         Invoke-AtomicTest "T1070.006-5" -GetPrereqs
         Invoke-AtomicTest "T1070.006-5" -LoggingModule "WinEvent-ExecutionLogger"
         (Get-EventLog -LogName "Atomic Red Team"  -EntryType Information).Count | Should -BeExactly 1
         Invoke-AtomicTest "T1070.006-5" -Cleanup
-        Remove-EventLog -Source "Applications and Services Logs" -LogName "Atomic Red Team"
+        Remove-EventLog -LogName "Atomic Red Team"
     }
 
 }
