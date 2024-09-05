@@ -22,6 +22,9 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           sudo pwsh
+          Set-PSRepository psgallery -InstallationPolicy trusted
+          Install-Module -Name Pester -Force -SkipPublisherCheck
+          Install-Module -Name powershell-yaml -Force -SkipPublisherCheck
           $config = New-PesterConfiguration
           $config.Run.Path = "."
           $config.CodeCoverage.Enabled = $true
