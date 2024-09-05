@@ -130,6 +130,17 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
         Remove-Item "$PSScriptRoot/temp.csv" -ErrorAction SilentlyContinue
     }
 
+    It "Run with Syslog-ExecutionLogger" {
+        $Global:artConfig = [pscustomobject]@{
+            syslogServer   = '127.0.0.1'
+            syslogPort     = 514
+            syslogProtocol = 'UDP'
+        }
+        Mock -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -MockWith { return $true }
+        Invoke-AtomicTest $_ -LoggingModule "Syslog-ExecutionLogger"
+        Assert-MockCalled -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -Exactly -Times 1
+    }
+
     AfterEach {
         Invoke-AtomicTest $_ -Cleanup
     }
