@@ -141,6 +141,19 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
         Assert-MockCalled -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -Exactly -Times 1
     }
 
+    It "Run with Default-ExecutionLogger,Syslog-ExecutionLogger" {
+        $Global:artConfig = [pscustomobject]@{
+            syslogServer   = '127.0.0.1'
+            syslogPort     = 514
+            syslogProtocol = 'UDP'
+        }
+        Mock -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -MockWith { return $true }
+        Invoke-AtomicTest $_ -LoggingModule "Syslog-ExecutionLogger,Default-ExecutionLogger" -ExecutionLogPath  "$PSScriptRoot/temp.csv"
+        Test-Path "$PSScriptRoot/temp.csv" | Should -Be $true
+        Remove-Item "$PSScriptRoot/temp.csv" -ErrorAction SilentlyContinue
+        Assert-MockCalled -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -Exactly -Times 1
+    }
+
     AfterEach {
         Invoke-AtomicTest $_ -Cleanup
     }
@@ -159,10 +172,12 @@ Describe "Run Windows Specific tests" {
     }
 
     It "Run with WinEventLogger" {
+        Remove-EventLog -Source "Applications and Services Logs" -LogName "Atomic Red Team"
         Invoke-AtomicTest "T1070.006-5" -GetPrereqs
         Invoke-AtomicTest "T1070.006-5" -LoggingModule "WinEvent-ExecutionLogger"
-        # TODO: Add test to check if event is logged
+        (Get-EventLog -LogName "Atomic Red Team"  -EntryType Information).Count | Should -BeExactly 1
         Invoke-AtomicTest "T1070.006-5" -Cleanup
+        Remove-EventLog -Source "Applications and Services Logs" -LogName "Atomic Red Team"
     }
 
 }
