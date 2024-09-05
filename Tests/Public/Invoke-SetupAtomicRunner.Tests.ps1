@@ -11,13 +11,12 @@ Describe "Invoke-SetupAtomicRunner" {
 
         Context "Should run as Root User" -Tag "Root" {
             BeforeAll {
-                $isAdmin = $False
                 if($isWindows){
                     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                    $isAdmin | Should -BeTrue
                 }else{
-                    $isAdmin = $(id -u) -eq 0
+                    id -u | Should -Be 0
                 }
-                $isAdmin | Should -BeTrue
             }
 
             It "Should run without errors Linux & MacOS" -Skip:$isWindows {
