@@ -4,7 +4,7 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-    # Cancel redundant CI tests automatically
+# Cancel redundant CI tests automatically
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,14 +18,42 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
-      - name: pester
+      - name: pester (Root tests)
+        if: runner.os != 'Windows'
         run: |
-          Set-PSRepository psgallery -InstallationPolicy trusted
-          Install-Module -Name Pester -Force -SkipPublisherCheck;
+          sudo pwsh
           $config = New-PesterConfiguration
           $config.Run.Path = "."
           $config.CodeCoverage.Enabled = $true
+          $config.CodeCoverage.OutputFormat = 'JaCoCo'
+          $config.CodeCoverage.OutputPath = 'coverage-root.xml'
+          $config.Filter.Tag = 'Root'
           Invoke-Pester -Configuration $config
+        shell: pwsh
+      - name: pester (non-Root tests)
+        run: |
+          Set-PSRepository psgallery -InstallationPolicy trusted
+          Install-Module -Name Pester -Force -SkipPublisherCheck
+          $config = New-PesterConfiguration
+          $config.Run.Path = "."
+          $config.CodeCoverage.Enabled = $true
+          $config.CodeCoverage.OutputFormat = 'JaCoCo'
+          $config.CodeCoverage.OutputPath = 'coverage-non-root.xml'
+          $config.Filter.ExcludeTag = 'Root'
+          Invoke-Pester -Configuration $config
+        shell: pwsh
+      - name: Combine coverage reports
+        run: |
+          $mergedReport = Join-Path $env:GITHUB_WORKSPACE "coverage.xml"
+          $reports = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Filter "coverage-*.xml"
+          $mergedContent = [System.Collections.ArrayList]::new()
+
+          foreach ($report in $reports) {
+              $content = Get-Content $report.FullName
+              $mergedContent.AddRange($content)
+          }
+
+          $mergedContent | Set-Content $mergedReport
         shell: pwsh
       - name: Codecov
         uses: codecov/codecov-action@v4

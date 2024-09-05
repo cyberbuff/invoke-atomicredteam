@@ -120,13 +120,13 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
 
     It "Run with AttireLogger" {
         Invoke-AtomicTest $_ -LoggingModule "Attire-ExecutionLogger" -ExecutionLogPath "timestamp.json"
-        Test-Path *.json | Should -Be $true
+        Test-Path *.json | Should -BeTrue
         Remove-Item *.json -ErrorAction SilentlyContinue
     }
 
     It "Run with Default-ExecutionLogger" {
         Invoke-AtomicTest $_ -LoggingModule "Default-ExecutionLogger" -ExecutionLogPath  "$PSScriptRoot/temp.csv"
-        Test-Path "$PSScriptRoot/temp.csv" | Should -Be $true
+        Test-Path "$PSScriptRoot/temp.csv" | Should -BeTrue
         Remove-Item "$PSScriptRoot/temp.csv" -ErrorAction SilentlyContinue
     }
 
@@ -149,7 +149,7 @@ Describe "Check LoggingFramework for <name>" -ForEach @(
         }
         Mock -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -MockWith { return $true }
         Invoke-AtomicTest $_ -LoggingModule "Syslog-ExecutionLogger,Default-ExecutionLogger" -ExecutionLogPath  "$PSScriptRoot/temp.csv"
-        Test-Path "$PSScriptRoot/temp.csv" | Should -Be $true
+        Test-Path "$PSScriptRoot/temp.csv" | Should -BeTrue
         Remove-Item "$PSScriptRoot/temp.csv" -ErrorAction SilentlyContinue
         Assert-MockCalled -CommandName Send-SyslogMessage -ModuleName Syslog-ExecutionLogger -Exactly -Times 1
     }

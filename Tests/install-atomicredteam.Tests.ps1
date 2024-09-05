@@ -20,28 +20,28 @@ Describe "install-atomicsfolder" {
     It "Installs successfully with default parameters" {
         $Path = Get-AtomicsDir
         Install-AtomicRedTeam -Force
-        Test-Path $Path | Should -be $true
+        Test-Path $Path | Should -BeTrue
         Import-Module "$Path\Invoke-AtomicRedTeam.psd1" -Force
         $LASTEXITCODE | Should -Be 0
     }
 
     It "Installs successfully with custom install path" {
         Install-AtomicRedTeam -InstallPath $InstallPath
-        Test-Path "$InstallPath\invoke-atomicredteam" | Should -be $true
+        Test-Path "$InstallPath\invoke-atomicredteam" | Should -BeTrue
         Import-Module "$InstallPath\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1" -Force
         $LASTEXITCODE | Should -Be 0
     }
 
     It "Installs successfully with a different repo owner" {
         Install-AtomicRedTeam -InstallPath $InstallPath -RepoOwner "cyberbuff"
-        Test-Path "$InstallPath\invoke-atomicredteam" | Should -be $true
+        Test-Path "$InstallPath\invoke-atomicredteam" | Should -BeTrue
         Import-Module "$InstallPath\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1" -Force
         $LASTEXITCODE | Should -Be 0
     }
 
     It "Installs successfully with atomics" {
         Install-AtomicRedTeam -InstallPath $InstallPath -getAtomics
-        Test-Path "$InstallPath\invoke-atomicredteam" | Should -be $true
+        Test-Path "$InstallPath\invoke-atomicredteam" | Should -BeTrue
         Import-Module "$InstallPath\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1" -Force
         $LASTEXITCODE | Should -Be 0
         (Get-ChildItem "$InstallPath/atomics" -File -Recurse).Count |  Should -BeGreaterThan 0
@@ -49,7 +49,7 @@ Describe "install-atomicsfolder" {
 
     It "Installs successfully with atomics and no payloads" {
         Install-AtomicRedTeam -InstallPath $InstallPath -getAtomics -NoPayloads
-        Test-Path "$InstallPath\invoke-atomicredteam" | Should -be $true
+        Test-Path "$InstallPath\invoke-atomicredteam" | Should -BeTrue
         Import-Module "$InstallPath\invoke-atomicredteam\Invoke-AtomicRedTeam.psd1" -Force
         $LASTEXITCODE | Should -Be 0
         # When the payloads are not downloaded, the folder count will be equal to the YAML files.
