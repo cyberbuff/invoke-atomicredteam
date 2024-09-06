@@ -1,3 +1,16 @@
+function Get-ARTCredential {
+    if (Test-Path $artConfig.credFile) {
+        Write-Host "Credential File $($artConfig.credFile) already exists, not prompting for creation of a new one."
+        $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $artConfig.user, (Get-Content $artConfig.credFile | ConvertTo-SecureString)
+    }
+    else {
+        # create credential file for the user since we aren't using a group managed service account
+        $cred = Get-Credential -UserName $artConfig.user -message "Enter password for $($artConfig.user) in order to create the runner scheduled task"
+        $cred.Password | ConvertFrom-SecureString | Out-File $artConfig.credFile
+    }
+    return $cred
+}
+
 function Invoke-SetupAtomicRunner {
 
     [CmdletBinding(
@@ -40,15 +53,7 @@ function Invoke-SetupAtomicRunner {
 
     if ($artConfig.OS -eq "windows") {
         if ($asScheduledtask) {
-            if (Test-Path $artConfig.credFile) {
-                Write-Host "Credential File $($artConfig.credFile) already exists, not prompting for creation of a new one."
-                $cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $artConfig.user, (Get-Content $artConfig.credFile | ConvertTo-SecureString)
-            }
-            else {
-                # create credential file for the user since we aren't using a group managed service account
-                $cred = Get-Credential -UserName $artConfig.user -message "Enter password for $($artConfig.user) in order to create the runner scheduled task"
-                $cred.Password | ConvertFrom-SecureString | Out-File $artConfig.credFile
-            }
+            $cred = Get-ARTCredential
             # setup scheduled task that will start the runner after each restart
             # local security policy --> Local Policies --> Security Options --> Network access: Do not allow storage of passwords and credentials for network authentication must be disabled
             $taskName = "KickOff-AtomicRunner"
@@ -86,8 +91,9 @@ function Invoke-SetupAtomicRunner {
             # create the service that will start the runner after each restart
             # The user must have the "Log on as a service" right. To add that right, open the Local Security Policy management console, go to the
             # "\Security Settings\Local Policies\User Rights Assignments" folder, and edit the "Log on as a service" policy there.
+            $cred = Get-ARTCredential
             . "$PSScriptRoot\AtomicRunnerService.ps1" -Remove
-            . "$PSScriptRoot\AtomicRunnerService.ps1" -UserName $artConfig.user -installDir $artConfig.serviceInstallDir -Setup
+            . "$PSScriptRoot\AtomicRunnerService.ps1" -UserName $cred.UserName -Password $cred.Password -installDir $artConfig.serviceInstallDir -Setup
             Add-EnvPath -Container Machine -Path $artConfig.serviceInstallDir
             # set service start retry options
             $ServiceDisplayName = "AtomicRunnerService"
@@ -105,8 +111,12 @@ function Invoke-SetupAtomicRunner {
                 $output = sc.exe  failure $($service.Name) actions= $action reset= $resetCounter
             }
             # set service to delayed auto-start (doesn't reflect in the services console until after a reboot)
-            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AtomicRunnerService" -Name Start -Value 2
-            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AtomicRunnerService" -Name DelayedAutostart -Value 1
+            $registryPath = "HKLM:\SYSTEM\CurrentControlSet\Services\AtomicRunnerService"
+            if(-not (Test-Path $registryPath)){
+                New-Item -Path $registryPath -Force | Out-Null
+            }
+            Set-ItemProperty -Path $registryPath -Name Start -Value 2
+            Set-ItemProperty -Path $registryPath -Name DelayedAutostart -Value 1
 
             # remove scheduled task now that we are using a service instead
             Unregister-ScheduledTask "KickOff-AtomicRunner" -confirm:$false -ErrorAction Ignore
@@ -116,7 +126,7 @@ function Invoke-SetupAtomicRunner {
         # sets cronjob string using basepath from config.ps1
         $pwshPath = which pwsh
         $job = "@reboot root sleep 60;$pwshPath -Command Invoke-KickoffAtomicRunner"
-        $exists = cat /etc/crontab | Select-String -Quiet "KickoffAtomicRunner"
+        $exists = Get-Content /etc/crontab | Select-String -Quiet "KickoffAtomicRunner"
         #checks if the Kickoff-AtomicRunner job exists. If not appends it to the system crontab.
         if ($null -eq $exists) {
             $(Write-Output "$job" >> /etc/crontab)
