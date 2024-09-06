@@ -85,7 +85,7 @@ Describe "Invoke-SetupAtomicRunner" {
         }
 
         It "Configure as Scheduled Task" {
-            
+
 
             # run the setup
             Invoke-SetupAtomicRunner -asScheduledtask
